@@ -4,4 +4,4 @@ main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
-    return render_template('index.html', message='¡Hola, mundo desde Flask!')
+    return render_template('index.html', message='¡Hola, jefe')
