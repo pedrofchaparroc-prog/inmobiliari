@@ -2,10 +2,91 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Hola Flask</title>
+  <title>Inmobiliaria - Apartamentos</title>
+  <style>
+    body{font-family:Segoe UI,Arial;margin:20px;background:#f7f9fb}
+    .apt{border-radius:6px;padding:14px;margin:12px 0;box-shadow:0 1px 3px rgba(0,0,0,0.06);background:#fff}
+    .apt.disponible{border-left:6px solid #2e8b57}
+    .apt.ocupado{border-left:6px solid #c0392b}
+    h2{margin:0 0 8px 0}
+    .btn{display:inline-block;padding:6px 10px;margin-right:6px;border-radius:4px;border:0;cursor:pointer}
+    .btn-primary{background:#007bff;color:#fff}
+    .btn-secondary{background:#6c757d;color:#fff}
+    .muted{color:#666}
+  </style>
 </head>
 <body>
-  <h1>{{ message }}</h1>
-  <p>Accede en <a href="/">/</a></p>
+  <h1>Inmobiliaria — Apartamentos</h1>
+  <p>Edita <code>app/routes.py</code> APARTMENTS para cambiar los datos mostrados.</p>
+
+  {% for a in apartments %}
+  <div id="apt-{{ a.number }}" class="apt {{ a.status }}">
+    <h2>Apto {{ a.number }} — {{ a.address }}</h2>
+    <p><strong>Arriendo:</strong> ${{ '%.2f'|format(a.rent) }} &nbsp; <strong>Estado:</strong>
+      <span class="muted" id="status-{{ a.number }}">{{ a.status }}</span>
+    </p>
+    <p><strong>Dueño:</strong> {{ a.owner.name }} (ID: {{ a.owner.id }})</p>
+    <p><strong>Inquilino:</strong> {% if a.tenant %} {{ a.tenant.name }} (ID: {{ a.tenant.id }}) {% else %} — {% endif %}</p>
+    <p><strong>Documentos:</strong> {{ a.documents|join(', ') if a.documents else '—' }}</p>
+    <p><strong>Nº Contrato:</strong> {{ a.contract_number or '—' }}</p>
+
+    <div>
+      <button class="btn btn-primary" onclick="toggleDetails('{{ a.number }}')">Detalles</button>
+      <button class="btn btn-secondary" onclick="changeStatus('{{ a.number }}', this)">Cambiar estado</button>
+    </div>
+
+    <div id="details-{{ a.number }}" style="display:none;margin-top:10px">
+      <p><strong>Reporte financiero:</strong>
+        Rent {{ '%.2f'|format(a.financial.rent) }},
+        Ingresos {{ '%.2f'|format(a.financial.incomes|sum) }},
+        Gastos {{ '%.2f'|format(a.financial.expenses|sum) }},
+        Neto {{ '%.2f'|format(a.financial.rent + (a.financial.incomes|sum) - (a.financial.expenses|sum)) }}
+      </p>
+      <p><strong>Reporte de daños:</strong></p>
+      {% if a.damages %}
+        <ul>
+          {% for d in a.damages %}
+            <li>{{ d.date }} — {{ d.desc }} (Costo: ${{ '%.2f'|format(d.cost) }})</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>—</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <script>
+    function toggleDetails(number){
+      const el = document.getElementById('details-' + number);
+      if(!el) return;
+      el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+    }
+
+    async function changeStatus(number, btn){
+      try{
+        btn.disabled = true;
+        const res = await fetch('/toggle_status', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({number})
+        });
+        const data = await res.json();
+        if(data.status){
+          const statusEl = document.getElementById('status-' + number);
+          const wrapper = document.getElementById('apt-' + number);
+          statusEl.textContent = data.status;
+          // actualizar clase para color
+          wrapper.classList.remove('disponible','ocupado');
+          wrapper.classList.add(data.status);
+        } else if(data.error){
+          alert('Error: ' + data.error);
+        }
+      }catch(e){
+        alert('Error en la petición');
+      }finally{ btn.disabled = false; }
+    }
+  </script>
+
 </body>
 </html>
